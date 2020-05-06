@@ -1,4 +1,4 @@
-# PlutoSDR Python Service Application
+# PlutoSDR
 
 ## Install IIO Python Binding for Linux (Debian distro)
 
@@ -26,6 +26,6 @@ run command 'cmake ./'
 run command 'py -2 setup.py install' for python2 or 'py -3 setup.py install' for python3, if py is not install, using python2 or python3 directly
 ```
 
-## Reference
+## See also
 - [__lib9361-iio__](https://github.com/analogdevicesinc/libad9361-iio)
 - [__libiio__](https://github.com/analogdevicesinc/libiio)
