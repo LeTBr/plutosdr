@@ -1,1 +1,3 @@
-*.c inguist-language=Python
+*.h linguist-language=Python
+*.c linguist-language=Python
+*.cpp linguist-language=Python
