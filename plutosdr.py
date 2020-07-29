@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*-coding:utf-8-*-
 # Description: This is PlutoSDR service which supplies I/Q through socket
 
@@ -11,6 +11,7 @@ import threading
 import time
 import traceback
 from ctypes import CDLL as _cdll
+from ctypes import WinDLL as _windll
 from ctypes import c_int, c_ulong
 
 import iio
@@ -23,12 +24,8 @@ def load_libad9361():
 
     arch, name = platform.architecture()
     if name.lower().startswith('win'):
-        path = os.path.dirname(__file__)
-        if arch.lower() == '32bit':
-            path += r'.\win\x86\libad9361.dll'
-        else:
-            path += r'.\win\x64\libad9361.dll'
-        return _cdll(path)
+        path = os.path.join(os.path.dirname(__file__), r'win\x86\libad9361.dll' if arch.lower() == '32bit' else r'win\x64\libad9361.dll')
+        return _windll(path)
     path = '/usr/lib/libad9361.so.0'
     if os.path.exists(path):
         return _cdll(path)
@@ -46,7 +43,7 @@ _ad9361_set_bb_rate.restype = c_int
 MAX_IQ_SIZE = 32768
 
 
-class DeviceService(object):
+class DeviceService():
     '''
     Adalm-Pluto based on AD9361 manufactured by ADI
     '''
@@ -63,14 +60,14 @@ class DeviceService(object):
         sys.stdout.write('Initialize Adalm-Pluto (based on AD936x) ...\n')
 
         self.__parameters = {
-            'frequency': (0, [101700000L, (70000000L, 1, 6000000000L)]),  # RX frequency
-            'rf_bandwidth': (4, [2000000L, (200000L, 1, 56000000L)]),   # RX bandwidth
+            'frequency': (0, [101700000, (70000000, 1, 6000000000)]),  # RX frequency
+            'rf_bandwidth': (4, [2000000, (200000, 1, 56000000)]),   # RX bandwidth
             # 'sampling_frequency': (4, [2500000, (2083333, 1, 61440000)]),
-            'sampling_frequency': (4, [2500000L, (521000L, 1, 61440000L)]),  # Sampling Rate
+            'sampling_frequency': (4, [2500000, (521000, 1, 61440000)]),  # Sampling Rate
             'gain_control_mode': (4, ['manual', ('manual,fast_attack,slow_attack,hybrid')]),  # Gain control
             'hardwaregain': (4, [-3, (-3, 1, 71)]),  # MGC
             'tx_enabled': (1, ['false', ('true,false')]),  # TX RF out
-            'tx_frequency': (1, [101700000L, (70000000L, 1, 6000000000L)]),  # TX frequency
+            'tx_frequency': (1, [101700000, (70000000, 1, 6000000000)]),  # TX frequency
             'tx_hardwaregain': (5, [0, (-89, 1, 0)])  # TX MGC
         }
         self.__callback = None
@@ -179,7 +176,7 @@ class DeviceService(object):
             if value == self.__parameters[name][1][0]:
                 return
 
-            if isinstance(value, (int, long)):
+            if isinstance(value, (int, )):
                 chn_idx, result, (start, _, stop) = self.__parameters[name][0], self.__parameters[name][1][0], self.__parameters[name][1][1]
                 if value < start:
                     result = start
@@ -212,7 +209,7 @@ class DeviceService(object):
                     self.__ctrl.channels[chn_idx].attrs[name].value = str(result)
                     if name == 'rf_bandwidth':
                         self.__ctrl.channels[chn_idx+1].attrs[name].value = str(result)
-                        sampling_frequency = long(result * 1.28) if result >= 500000 else 521000L
+                        sampling_frequency = int(result * 1.28) if result >= 500000 else 521000
                         # # when rf_bandwidth is set to 1MHz or 5MHz, sampling_frequency will be set to 13.5MHz
                         # if result in (1000000L, 5000000L):
                         #     sampling_frequency = 13500000L
@@ -268,7 +265,7 @@ class DeviceService(object):
                 current = index * MAX_IQ_SIZE
                 next_ = (index+1) * MAX_IQ_SIZE
                 partial_iq = iq[current: next_]
-                data = struct.pack('=sqqqii', '#', frequency, bandwidth, sampling_rate, int(float(attenuation)), len(partial_iq)/4)
+                data = struct.pack('=sqqqii', b'#', frequency, bandwidth, sampling_rate, int(float(attenuation)), len(partial_iq)//4)
                 data += partial_iq
                 if self.__callback:
                     self.__callback(data)
@@ -277,7 +274,7 @@ class DeviceService(object):
                 total -= MAX_IQ_SIZE
                 index += 1
             partial_iq = iq[next_:]
-            data = struct.pack('=sqqqii', '#', frequency, bandwidth, sampling_rate, int(float(attenuation)), len(partial_iq)/4)
+            data = struct.pack('=sqqqii', b'#', frequency, bandwidth, sampling_rate, int(float(attenuation)), len(partial_iq)//4)
             data += partial_iq
             if self.__callback:
                 self.__callback(data)
@@ -285,7 +282,7 @@ class DeviceService(object):
                 time.sleep(2)
 
 
-class NetworkService(object):
+class NetworkService():
     '''
     Use this network service to dispatch data from device context
     '''
@@ -360,10 +357,10 @@ class NetworkService(object):
         self.__lock.acquire()
         self.__data_sockets[id(client_socket)] = None
         self.__lock.release()
-        fd = client_socket.makefile('rw', 0)  # convert
+        fd = client_socket.makefile('rwb', 0)  # convert
         while True:
             try:
-                request = fd.readline().lower().strip()
+                request = fd.readline().lower().decode('ascii').strip()
                 sys.stdout.write('Receive request: \"{0}\"\n'.format(request))
                 # a star ahead means a command used to initialize networking or task
                 if request.startswith('*'):
@@ -432,10 +429,8 @@ class NetworkService(object):
             if len(parameter) != 3:
                 continue
             param_type, name, value = parameter
-            if param_type == 'int':
+            if param_type == 'int' or param_type == 'long':
                 value = int(value)
-            elif param_type == 'long':
-                value = long(value)
             self.__device.set_parameter(name, value)
 
     def __broadcast_data(self, data):
@@ -477,6 +472,7 @@ def main():
     except:
         value = 2048
 
+    network_service = None
     try:
         device_service = DeviceService(sampling_count=value)
         network_service = NetworkService(device_service)
@@ -484,7 +480,8 @@ def main():
     except:
         traceback.print_exc()
     finally:
-        network_service.stop()
+        if network_service:
+            network_service.stop()
 
 
 if __name__ == '__main__':

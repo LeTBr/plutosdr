@@ -1,3 +1,5 @@
+# PlutoSDR
+
 ## 控制方式
 
 - 客户端以tcp作为控制通道操作服务端，并通过命令告知服务端udp数据回传通道，如下所示
@@ -20,7 +22,6 @@
    __手动增益__|hardwaregain|int|-3dB~70dB
    __中心频率（发射）__|tx_frequency|long|70MHz~6GHz
    __发射使能__|tx_enabled|str|[_false,true_]
-
 
 ## 数据格式
 

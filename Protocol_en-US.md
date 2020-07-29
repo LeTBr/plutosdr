@@ -1,6 +1,8 @@
+# PlutoSDR
+
 ## Control Over LAN
 
-- Instructions are sent to server through TCP connection, and data is retrieved from server through UDP whose binding information is told to server through TCP instructions as below. 
+- Instructions are sent to server through TCP connection, and data is retrieved from server through UDP whose binding information is told to server through TCP instructions as below.
 - Server is listening on TCP port 5025
 - Client sends instruction to sever to initialize data retrieving channel. e.g. "*upd=xxx.xxx.xxx.xxx:yyyy\n". it goes to according to IPv4 format in which "xxx.xxx.xxx.xxx"  stands for IP address and "yyyy"  for UDP server port binded on client side.
 

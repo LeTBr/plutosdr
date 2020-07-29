@@ -28,9 +28,9 @@ def main():
     tcp_proxy = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     tcp_proxy.connect((remote_addr, int(remote_port)))
     host, _ = tcp_proxy.getsockname()
-    tcp_proxy.sendall('*udp={0}:{1}\n'.format(host, port))
-    tcp_proxy.sendall('*task=on\n')
-    tcp_proxy.sendall('#str:tx_enabled:true\n')
+    tcp_proxy.sendall('*udp={0}:{1}\n'.format(host, port).encode('ascii'))
+    tcp_proxy.sendall('*task=on\n'.encode('ascii'))
+    tcp_proxy.sendall('#str:tx_enabled:true\n'.encode('ascii'))
 
     g_frequency = 70000000
 
@@ -38,15 +38,15 @@ def main():
         try:
             g_frequency %= 6000000000
             message, _ = server_sock.recvfrom(64 * 1024)  # 64k, maximum
-            if message[0] == '#':
+            if message[0] == (b'#')[0]:
                 identifier, frequency, bandwidth, sampling_rate, attenuation, length = struct.unpack(
                     '=sqqqii', message[:33])
                 raw = message[33:]
                 raw = struct.unpack('={0}h'.format(length * 2), raw)
                 sys.stdout.write('{0}freq={1},bw={2},sr={3},att={4},raw_len={5},raw_sample={6}\n'.format(
                     identifier, frequency, bandwidth, sampling_rate, attenuation, length, raw[:10]))
-                tcp_proxy.sendall('#long:tx_frequency:{0}\n'.format(g_frequency+9000000))
-                tcp_proxy.sendall('#long:frequency:{0}\n'.format(g_frequency))
+                tcp_proxy.sendall('#long:tx_frequency:{0}\n'.format(g_frequency+9000000).encode('ascii'))
+                tcp_proxy.sendall('#long:frequency:{0}\n'.format(g_frequency).encode('ascii'))
                 g_frequency += 1000000
                 # Get time domain data (I/Q tuple list), plus, every I/Q data is signed short type
                 iq_tuple_list = [(raw[2*i], raw[2*i+1]) for i in range(length)]
